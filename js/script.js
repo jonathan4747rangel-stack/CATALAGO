@@ -321,7 +321,7 @@ function closeCart() {
 
 function sendWhatsApp() {
     if(cart.length===0) return;
-    let msg = "🛍️ *PEDIDO FOAMI GUICAR 2026*%0A%0A";
+    let msg = "🛍️ * FOAMI PREMIUM INVERCIONES GUICAR 2025*%0A%0A";
     cart.forEach(item => {
         const cantidadTexto = item.esPaquete ? `${item.cantidadUnidades/item.unidadesPorPaquete} paquetes (${item.cantidadUnidades} und)` : `${item.cantidadUnidades} unidad(es)`;
         msg += `• ${item.nombre} — ${item.categoryNombre} → ${cantidadTexto}%0A`;

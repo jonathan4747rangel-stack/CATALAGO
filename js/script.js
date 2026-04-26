@@ -218,16 +218,87 @@ function closeCart() {
     document.body.style.overflow=""; 
 }
 
+// ==================== FUNCIÓN MEJORADA DE WHATSAPP ====================
 function sendWhatsApp() {
-    if(cart.length===0) return;
-    let msg = "🛍️ *PEDIDO FOAMI PREMIA*%0A%0A";
+    if (cart.length === 0) {
+        showToast("El carrito está vacío", "#888");
+        return;
+    }
+
+    // Agrupar items por categoría
+    const grouped = {};
     cart.forEach(item => {
-        const cantidadTexto = item.esPaquete ? `${item.cantidadUnidades/item.unidadesPorPaquete} paquetes (${item.cantidadUnidades} und)` : `${item.cantidadUnidades} unidad(es)`;
-        msg += `• ${item.nombre} — ${item.categoryNombre} → ${cantidadTexto}%0A`;
+        const key = item.categoryId;
+        if (!grouped[key]) {
+            grouped[key] = {
+                categoryNombre: item.categoryNombre,
+                esPaquete: item.esPaquete,
+                unidadesPorPaquete: item.unidadesPorPaquete,
+                items: []
+            };
+        }
+        grouped[key].items.push({
+            nombre: item.nombre,
+            cantidadUnidades: item.cantidadUnidades
+        });
     });
-    msg += `%0A📦 *Total unidades:* ${cart.reduce((s,i)=>s+i.cantidadUnidades,0)}%0A✨ ¡Listo para cotizar!`;
-    window.open(`https://wa.me/584122891366?text=${encodeURIComponent(msg)}`, '_blank');
+
+    let mensaje = "*ORDEN DE PEDIDO | FOAMI PREMIA* 🛍️\n\n";
+    let totalPaquetesGlobal = 0;
+    let totalUnidadesGlobal = 0;
+
+    for (const key in grouped) {
+        const grupo = grouped[key];
+        const nombreProducto = grupo.categoryNombre;
+        const esPaquete = grupo.esPaquete;
+        const unidadesPorPaquete = grupo.unidadesPorPaquete;
+        
+        mensaje += `📦 *PRODUCTO:* ${nombreProducto}\n`;
+        if (esPaquete) {
+            mensaje += `📑 *PRESENTACIÓN:* Paquetes (${unidadesPorPaquete} und)\n`;
+        } else {
+            mensaje += `📑 *PRESENTACIÓN:* Unidad suelta\n`;
+        }
+        mensaje += `▫️ *CANT. | DESCRIPCIÓN*\n`;
+        
+        const itemsOrdenados = [...grupo.items].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        let totalPaquetesCategoria = 0;
+        let totalUnidadesCategoria = 0;
+        
+        itemsOrdenados.forEach(item => {
+            if (esPaquete) {
+                const paquetes = item.cantidadUnidades / unidadesPorPaquete;
+                totalPaquetesCategoria += paquetes;
+                totalUnidadesCategoria += item.cantidadUnidades;
+                const cantidadFormateada = String(paquetes).padStart(2, '0');
+                mensaje += `• [ ${cantidadFormateada} ] — ${item.nombre}\n`;
+            } else {
+                totalUnidadesCategoria += item.cantidadUnidades;
+                const cantidadFormateada = String(item.cantidadUnidades).padStart(2, '0');
+                mensaje += `• [ ${cantidadFormateada} ] — ${item.nombre}\n`;
+            }
+        });
+        
+        mensaje += `\n`;
+        if (esPaquete) {
+            totalPaquetesGlobal += totalPaquetesCategoria;
+            totalUnidadesGlobal += totalUnidadesCategoria;
+        } else {
+            totalUnidadesGlobal += totalUnidadesCategoria;
+        }
+    }
+    
+    mensaje += `📊 *RESUMEN DE CARGA:*\n`;
+    if (totalPaquetesGlobal > 0) {
+        mensaje += `🔹 **Total Paquetes:** ${totalPaquetesGlobal}\n`;
+    }
+    mensaje += `🔹 **Total Unidades:** ${totalUnidadesGlobal} láminas\n`;
+    mensaje += `✨ *Favor confirmar disponibilidad para proceder con la orden.*`;
+    
+    const url = `https://wa.me/584122891366?text=${encodeURIComponent(mensaje)}`;
+    window.open(url, '_blank');
 }
+// ====================================================================
 
 // Inicialización
 document.addEventListener("DOMContentLoaded", () => {

@@ -9,7 +9,6 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- CSS personalizado -->
     <link rel="stylesheet" href="css/style.css">
-    <!-- Configuración de Tailwind -->
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -72,7 +71,7 @@
     <header class="fixed top-0 w-full z-50 bg-zinc-950/70 backdrop-blur-xl border-b border-white/10 shadow-2xl shadow-black/30">
         <div class="flex justify-between items-center w-full px-6 md:px-8 h-16 max-w-7xl mx-auto">
             <div class="flex items-center gap-4">
-                <!-- Logo (puedes cambiarlo a ruta local) -->
+                <!-- Logo (puedes cambiar a ruta local si descargas la imagen) -->
                 <img src="https://raw.githubusercontent.com/JJRB47/JJRB47/main/assets/logo-jrb.png" alt="Logo Jonathan Rangel" class="w-9 h-9 rounded-lg object-contain bg-white/5 p-1 border border-white/10" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center text-xs font-bold" style="display:none;">JR</div>
                 <div>
@@ -117,8 +116,15 @@
             <p class="text-zinc-500 text-xs mt-1">Explora las categorías y elige tus texturas.</p>
         </div>
         <div id="cartFooter" class="hidden border-t border-white/10 px-6 py-5 space-y-4">
-            <div class="flex justify-between items-baseline"><span class="text-sm text-zinc-400 font-medium">Total unidades</span><span id="cartTotal" class="font-bold text-2xl text-white">0</span></div>
-            <button onclick="sendWhatsApp()" class="w-full bg-gradient-to-r from-[#25D366] to-[#128C7E] py-3.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] transition-transform active:scale-95"><i data-lucide="send" class="w-4 h-4"></i>Enviar pedido por WhatsApp</button>
+            <!-- NUEVO: líneas de resumen por categoría (igual que en cartulinas) -->
+            <div id="cartSummaryLines" class="text-xs text-amber-400 flex flex-wrap items-center gap-2"></div>
+            <div class="flex justify-between items-baseline">
+                <span class="text-sm text-zinc-400 font-medium">Total unidades</span>
+                <span id="cartTotal" class="font-bold text-2xl text-white">0</span>
+            </div>
+            <button onclick="sendWhatsApp()" class="w-full bg-gradient-to-r from-[#25D366] to-[#128C7E] py-3.5 rounded-xl text-white font-bold flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] transition-transform active:scale-95">
+                <i data-lucide="send" class="w-4 h-4"></i>Enviar pedido por WhatsApp
+            </button>
             <button onclick="clearCart()" class="w-full py-2.5 rounded-xl border border-white/10 text-zinc-300 text-sm hover:bg-white/5 transition">Vaciar carrito</button>
         </div>
     </div>

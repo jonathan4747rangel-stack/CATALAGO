@@ -51,6 +51,15 @@ const categories = [
 let cart = [];
 let currentCategory = null;
 
+// ==================== FUNCIÓN DE COLOR DINÁMICO (igual que en cartulinas) ====================
+function getCartColor(totalUnits) {
+    let t = Math.min(totalUnits, 100) / 100; // 0 → verde, 1 → naranja
+    let hue = 150 - (t * 125);  // 150° (verde) a 25° (naranja)
+    let sat = 70 + (t * 20);
+    let light = 45 + (t * 10);
+    return `hsl(${hue}, ${sat}%, ${light}%)`;
+}
+
 // Helpers
 function saveCart() { localStorage.setItem("foami_cart_lux", JSON.stringify(cart)); }
 function loadCart() { const s = localStorage.getItem("foami_cart_lux"); if(s) try { cart = JSON.parse(s); if(!Array.isArray(cart)) cart=[]; } catch(e){cart=[];} updateCartUI(); }
@@ -104,36 +113,128 @@ function changeQty(idx, deltaUnidades) {
 
 function clearCart() { cart = []; saveCart(); updateCartUI(); showToast("Carrito vaciado", "#888"); }
 
+// ==================== UPDATE CART UI (con color dinámico y resumen por categorías) ====================
 function updateCartUI() {
-    const total = cart.reduce((s,i)=>s+i.cantidadUnidades,0);
-    const badge = document.getElementById("cartBadge"), fbadge = document.getElementById("floatingBadge");
-    const emptyDiv = document.getElementById("cartEmpty"), itemsDiv = document.getElementById("cartItems"), footer = document.getElementById("cartFooter");
-    const countSpan = document.getElementById("cartCount"), totalSpan = document.getElementById("cartTotal");
-    if(total>0) {
-        badge?.classList.remove("hidden"); badge?.classList.add("flex","badge-bounce"); badge.textContent = total>99?"99+":total;
-        if(fbadge) { fbadge.textContent = total>99?"99+":total; fbadge.classList.remove("hidden"); fbadge.classList.add("flex"); }
-        emptyDiv?.classList.add("hidden"); itemsDiv?.classList.remove("hidden"); footer?.classList.remove("hidden"); footer?.classList.add("flex","flex-col");
-        setTimeout(()=>badge?.classList.remove("badge-bounce"),300);
-    } else {
-        badge?.classList.add("hidden"); badge?.classList.remove("flex"); if(fbadge) fbadge.classList.add("hidden");
-        emptyDiv?.classList.remove("hidden"); itemsDiv?.classList.add("hidden"); footer?.classList.add("hidden"); footer?.classList.remove("flex","flex-col");
+    const totalUnits = cart.reduce((s,i)=>s+i.cantidadUnidades, 0);
+    const totalPackages = cart.reduce((s,i)=>s + (i.esPaquete ? (i.cantidadUnidades / i.unidadesPorPaquete) : i.cantidadUnidades), 0);
+    
+    // COLOR DINÁMICO (igual que en cartulinas)
+    const cartColor = getCartColor(totalUnits);
+    const badgeEl = document.getElementById('cartBadge');
+    if (badgeEl) {
+        badgeEl.style.backgroundColor = cartColor;
+        badgeEl.style.transition = 'background-color 0.2s ease';
     }
-    countSpan.textContent = `(${total} und)`;
-    totalSpan.textContent = total;
+    const floatingBtn = document.getElementById('floatingCartBtn');
+    if (floatingBtn) {
+        floatingBtn.style.borderColor = cartColor;
+        floatingBtn.style.boxShadow = `0 0 8px ${cartColor}`;
+    }
+    const cartIcon = document.querySelector('header button i');
+    if (cartIcon) {
+        if (totalUnits > 0) cartIcon.style.color = cartColor;
+        else cartIcon.style.color = '';
+    }
+
+    // UI básica
+    const fbadge = document.getElementById('floatingBadge');
+    const emptyDiv = document.getElementById('cartEmpty');
+    const itemsDiv = document.getElementById('cartItems');
+    const footer = document.getElementById('cartFooter');
+    const countSpan = document.getElementById('cartCount');
+    const totalSpan = document.getElementById('cartTotal');
+    const summaryLines = document.getElementById('cartSummaryLines');
+
+    if (totalUnits > 0) {
+        badgeEl?.classList.remove('hidden'); badgeEl?.classList.add('flex','badge-bounce');
+        const badgeText = totalPackages > 99 ? '99+' : totalPackages;
+        badgeEl.textContent = badgeText;
+        if(fbadge) { fbadge.textContent = badgeText; fbadge.classList.remove('hidden'); fbadge.classList.add('flex'); fbadge.style.backgroundColor = cartColor; }
+        emptyDiv?.classList.add('hidden'); itemsDiv?.classList.remove('hidden');
+        footer?.classList.remove('hidden'); footer?.classList.add('flex','flex-col');
+        setTimeout(() => badgeEl?.classList.remove('badge-bounce'), 400);
+    } else {
+        badgeEl?.classList.add('hidden'); badgeEl?.classList.remove('flex');
+        if(fbadge) fbadge.classList.add('hidden');
+        emptyDiv?.classList.remove('hidden'); itemsDiv?.classList.add('hidden');
+        footer?.classList.add('hidden'); footer?.classList.remove('flex','flex-col');
+    }
+    countSpan.textContent = `(${totalUnits} und)`;
+    totalSpan.textContent = totalUnits;
+
+    // ========== DESGLOSE POR CATEGORÍAS (similar a cartulinas) ==========
+    const categorias = {
+        "carta-liso": { paq: 0, und: 0, nombre: "Carta Liso" },
+        "carta-esc": { paq: 0, und: 0, nombre: "Carta Escarchado" },
+        "doble-liso": { paq: 0, und: 0, nombre: "Doble Carta Liso" },
+        "doble-esc": { paq: 0, und: 0, nombre: "Doble Carta Escarchado" },
+        "lamina-liso": { paq: 0, und: 0, nombre: "Lámina Liso" },
+        "lamina-esc": { paq: 0, und: 0, nombre: "Lámina Escarchado" }
+    };
+    cart.forEach(item => {
+        const catId = item.categoryId;
+        if (categorias[catId]) {
+            if (item.esPaquete) {
+                const paquetes = item.cantidadUnidades / item.unidadesPorPaquete;
+                categorias[catId].paq += paquetes;
+                categorias[catId].und += item.cantidadUnidades;
+            } else {
+                categorias[catId].paq += item.cantidadUnidades;
+                categorias[catId].und += item.cantidadUnidades;
+            }
+        }
+    });
+    let desgloseHtml = '';
+    for (const [key, val] of Object.entries(categorias)) {
+        if (val.paq > 0) {
+            const icon = (key.includes('lamina') ? 'maximize-2' : (key.includes('esc') ? 'sparkles' : 'layers'));
+            desgloseHtml += `<span class="inline-flex items-center gap-1"><i data-lucide="${icon}" class="w-3 h-3"></i>${val.nombre}: ${val.paq} paq (${val.und} und)</span>`;
+        }
+    }
+    if (summaryLines) {
+        summaryLines.innerHTML = `<div class="flex flex-wrap items-center gap-2 text-xs text-zinc-300">${desgloseHtml} <span class="ml-auto text-amber-400">${cart.length} producto(s) distinto(s)</span></div>`;
+        lucide.createIcons();
+    }
+
+    // Renderizar items del carrito (formato mejorado)
     if(itemsDiv) {
-        itemsDiv.innerHTML = cart.map((item,idx) => {
-            const paquetes = item.esPaquete ? (item.cantidadUnidades / item.unidadesPorPaquete) : null;
-            const qtyText = item.esPaquete ? `${paquetes} paq (${item.cantidadUnidades} und)` : `${item.cantidadUnidades} und`;
-            return `<div class="flex items-center gap-3 p-3 rounded-xl glass-card bg-black/40">
+        itemsDiv.innerHTML = cart.map((item, idx) => {
+            const totalItemUnits = item.cantidadUnidades;
+            let textoUnidad = '';
+            if (item.esPaquete) {
+                const paquetes = totalItemUnits / item.unidadesPorPaquete;
+                textoUnidad = `${paquetes} paquete(s) = ${totalItemUnits} und`;
+            } else {
+                textoUnidad = `${totalItemUnits} unidad(es)`;
+            }
+            let catBadge = '';
+            if (item.categoryId.includes('carta')) catBadge = '<span class="text-[8px] bg-sky-500/20 text-sky-300 px-1.5 py-0.5 rounded-full">Tamaño Carta</span>';
+            else if (item.categoryId.includes('doble')) catBadge = '<span class="text-[8px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.5 rounded-full">Doble Carta</span>';
+            else if (item.categoryId.includes('lamina')) catBadge = '<span class="text-[8px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded-full">Lámina</span>';
+            
+            return `<div class="flex items-center gap-3 p-3 rounded-xl glass-card bg-black/40 slide-in">
                 <div class="w-11 h-11 rounded-xl border border-white/10" style="background:${item.hex}; box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-                <div class="flex-1"><p class="font-semibold text-white text-sm">${escapeHtml(item.nombre)}</p><p class="text-[10px] text-zinc-400">${escapeHtml(item.categoryNombre)} · ${qtyText}</p></div>
-                <div class="flex gap-1.5"><button onclick="changeQty(${idx}, -${item.unidadesPorPaquete})" class="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10"><i data-lucide="minus" class="w-3.5 h-3.5"></i></button><span class="w-6 text-center text-sm text-white">${item.esPaquete ? paquetes : item.cantidadUnidades}</span><button onclick="changeQty(${idx}, ${item.unidadesPorPaquete})" class="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10"><i data-lucide="plus" class="w-3.5 h-3.5"></i></button><button onclick="changeQty(${idx}, -${item.cantidadUnidades})" class="w-7 h-7 rounded-md bg-white/5 hover:bg-red-500/20"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-300"></i></button></div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <p class="text-sm font-semibold text-white truncate">${escapeHtml(item.nombre)}</p>
+                        ${catBadge}
+                    </div>
+                    <p class="text-[10px] text-zinc-400">${escapeHtml(item.categoryNombre)}</p>
+                    <p class="text-[9px] text-emerald-400">${textoUnidad}</p>
+                </div>
+                <div class="flex items-center gap-1">
+                    <button onclick="changeQty(${idx}, -${item.unidadesPorPaquete})" class="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center"><i data-lucide="minus" class="w-3.5 h-3.5 text-white"></i></button>
+                    <span class="w-6 text-center text-sm text-white">${item.esPaquete ? (item.cantidadUnidades / item.unidadesPorPaquete) : item.cantidadUnidades}</span>
+                    <button onclick="changeQty(${idx}, ${item.unidadesPorPaquete})" class="w-7 h-7 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center"><i data-lucide="plus" class="w-3.5 h-3.5 text-white"></i></button>
+                    <button onclick="changeQty(${idx}, -${item.cantidadUnidades})" class="w-7 h-7 rounded-md bg-white/5 hover:bg-red-500/20 flex items-center justify-center ml-1"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-red-300"></i></button>
+                </div>
             </div>`;
         }).join('');
         lucide.createIcons();
     }
 }
 
+// ==================== RENDER CATEGORÍAS Y COLORES (sin cambios) ====================
 function renderCategories() {
     const grid = document.getElementById("categoryGrid");
     if(!grid) return;
@@ -218,87 +319,16 @@ function closeCart() {
     document.body.style.overflow=""; 
 }
 
-// ==================== FUNCIÓN MEJORADA DE WHATSAPP ====================
 function sendWhatsApp() {
-    if (cart.length === 0) {
-        showToast("El carrito está vacío", "#888");
-        return;
-    }
-
-    // Agrupar items por categoría
-    const grouped = {};
+    if(cart.length===0) return;
+    let msg = "🛍️ *PEDIDO FOAMI GUICAR 2026*%0A%0A";
     cart.forEach(item => {
-        const key = item.categoryId;
-        if (!grouped[key]) {
-            grouped[key] = {
-                categoryNombre: item.categoryNombre,
-                esPaquete: item.esPaquete,
-                unidadesPorPaquete: item.unidadesPorPaquete,
-                items: []
-            };
-        }
-        grouped[key].items.push({
-            nombre: item.nombre,
-            cantidadUnidades: item.cantidadUnidades
-        });
+        const cantidadTexto = item.esPaquete ? `${item.cantidadUnidades/item.unidadesPorPaquete} paquetes (${item.cantidadUnidades} und)` : `${item.cantidadUnidades} unidad(es)`;
+        msg += `• ${item.nombre} — ${item.categoryNombre} → ${cantidadTexto}%0A`;
     });
-
-    let mensaje = "*ORDEN DE PEDIDO | FOAMI PREMIA* 🛍️\n\n";
-    let totalPaquetesGlobal = 0;
-    let totalUnidadesGlobal = 0;
-
-    for (const key in grouped) {
-        const grupo = grouped[key];
-        const nombreProducto = grupo.categoryNombre;
-        const esPaquete = grupo.esPaquete;
-        const unidadesPorPaquete = grupo.unidadesPorPaquete;
-        
-        mensaje += `📦 *PRODUCTO:* ${nombreProducto}\n`;
-        if (esPaquete) {
-            mensaje += `📑 *PRESENTACIÓN:* Paquetes (${unidadesPorPaquete} und)\n`;
-        } else {
-            mensaje += `📑 *PRESENTACIÓN:* Unidad suelta\n`;
-        }
-        mensaje += `▫️ *CANT. | DESCRIPCIÓN*\n`;
-        
-        const itemsOrdenados = [...grupo.items].sort((a, b) => a.nombre.localeCompare(b.nombre));
-        let totalPaquetesCategoria = 0;
-        let totalUnidadesCategoria = 0;
-        
-        itemsOrdenados.forEach(item => {
-            if (esPaquete) {
-                const paquetes = item.cantidadUnidades / unidadesPorPaquete;
-                totalPaquetesCategoria += paquetes;
-                totalUnidadesCategoria += item.cantidadUnidades;
-                const cantidadFormateada = String(paquetes).padStart(2, '0');
-                mensaje += `• [ ${cantidadFormateada} ] — ${item.nombre}\n`;
-            } else {
-                totalUnidadesCategoria += item.cantidadUnidades;
-                const cantidadFormateada = String(item.cantidadUnidades).padStart(2, '0');
-                mensaje += `• [ ${cantidadFormateada} ] — ${item.nombre}\n`;
-            }
-        });
-        
-        mensaje += `\n`;
-        if (esPaquete) {
-            totalPaquetesGlobal += totalPaquetesCategoria;
-            totalUnidadesGlobal += totalUnidadesCategoria;
-        } else {
-            totalUnidadesGlobal += totalUnidadesCategoria;
-        }
-    }
-    
-    mensaje += `📊 *RESUMEN DE CARGA:*\n`;
-    if (totalPaquetesGlobal > 0) {
-        mensaje += `🔹 **Total Paquetes:** ${totalPaquetesGlobal}\n`;
-    }
-    mensaje += `🔹 **Total Unidades:** ${totalUnidadesGlobal} láminas\n`;
-    mensaje += `✨ *Favor confirmar disponibilidad para proceder con la orden.*`;
-    
-    const url = `https://wa.me/584122891366?text=${encodeURIComponent(mensaje)}`;
-    window.open(url, '_blank');
+    msg += `%0A📦 *Total unidades:* ${cart.reduce((s,i)=>s+i.cantidadUnidades,0)}%0A✨ ¡Listo para cotizar!`;
+    window.open(`https://wa.me/584122891366?text=${msg}`, '_blank');
 }
-// ====================================================================
 
 // Inicialización
 document.addEventListener("DOMContentLoaded", () => {

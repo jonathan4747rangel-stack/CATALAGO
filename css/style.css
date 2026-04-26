@@ -92,3 +92,10 @@ body {
     pointer-events: none;
     z-index: 0;
 }
+
+/* Transiciones para color dinámico del carrito (igual que en cartulinas) */
+#cartBadge,
+#floatingCartBtn,
+header button i {
+    transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+}

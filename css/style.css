@@ -79,36 +79,11 @@
     50% { transform: scale(1.3); }
 }
 
-/* ===== FONDO DE PANTALLA CON IMAGEN LOCAL ===== */
-/* Capa de imagen fija */
-body::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('../assets/fondo.jpg');
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-attachment: fixed;
-    z-index: -2;
+/* Fondo oscuro con glow orbs (sin imagen externa) */
+body {
+    background: #0a0a0a;
 }
 
-/* Overlay oscuro semitransparente para mejorar legibilidad */
-body::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    z-index: -1;
-}
-
-/* Glow orbs se mantienen sobre el overlay pero debajo del contenido */
 .bg-glow-orb {
     position: fixed;
     border-radius: 50%;
